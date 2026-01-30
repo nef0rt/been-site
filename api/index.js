@@ -1,19 +1,18 @@
-// api/index.js - РАБОЧИЙ API С ПРОВЕРКОЙ ПОЛЬЗОВАТЕЛЕЙ
-// База в памяти (сбрасывается при перезапуске)
+// api/index.js - ТОЛЬКО УКАЗАННЫЕ ПОЛЬЗОВАТЕЛИ = АДМИНЫ
+// База в памяти
 
 let db = {
   users: {},
-  // ТОЛЬКО ЭТИ НИКИ - АДМИНЫ (ЗАМЕНИ НА СВОИ!)
-  ADMIN_USERS: ['admin', 'Nikita', 'Danielle'], // ← ЗДЕСЬ ТВОЙ НИК!
+  // ⚠️ ВАЖНО: ТОЛЬКО ЭТИ НИКИ - АДМИНЫ (ЗАМЕНИ НА СВОИ!)
+  ADMIN_USERS: ['admin', 'Nikita', 'Danielle'], // ← ЗАМЕНИ 'твой_ник_здесь' НА СВОЙ НИК!
   
-  // Инициализируем тестового пользователя
   init() {
-    // Тестовый пользователь для проверки
+    // Предустановленные пользователи
     if (!this.users['admin']) {
       this.users['admin'] = {
         username: 'admin',
-        password: 'admin123', // Можно зайти с этим паролем
-        role: 'admin',
+        password: 'administratorbeen606',
+        role: 'admin', // ← ТОЛЬКО admin = АДМИН
         id: '1',
         createdAt: new Date().toISOString(),
         isBanned: false,
@@ -26,7 +25,7 @@ let db = {
       this.users['test'] = {
         username: 'test',
         password: 'test123',
-        role: 'user',
+        role: 'user', // ← test = ОБЫЧНЫЙ пользователь
         id: '2',
         createdAt: new Date().toISOString(),
         isBanned: false,
@@ -37,7 +36,6 @@ let db = {
   }
 };
 
-// Инициализируем базу
 db.init();
 
 export default async function handler(req, res) {
@@ -77,14 +75,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Имя уже занято' });
       }
       
-      // Определяем админ ли
+      // ⚠️ ВАЖНО: ТОЛЬКО если имя в списке ADMIN_USERS = админ
       const isAdmin = db.ADMIN_USERS.includes(username.toLowerCase());
       
       // Создаем пользователя
       const user = {
         username,
-        password, // ВНИМАНИЕ: в проде хэшируй!
-        role: isAdmin ? 'admin' : 'user',
+        password,
+        role: isAdmin ? 'admin' : 'user', // ← здесь решается кто админ!
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
         isBanned: false,
@@ -100,6 +98,8 @@ export default async function handler(req, res) {
       
       if (isAdmin) {
         console.log(`👑 Новый админ: ${username}`);
+      } else {
+        console.log(`👤 Новый пользователь: ${username}`);
       }
       
       // Не отправляем пароль!
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
         success: true,
         message: `Регистрация успешна!`,
         user: safeUser,
-        isAdmin: isAdmin
+        isAdmin: isAdmin // ← возвращаем false для обычных пользователей
       });
     }
     
@@ -121,20 +121,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Нужны имя и пароль' });
       }
       
-      // Получаем пользователя из базы
+      // Получаем пользователя
       const user = db.users[username];
       
-      // Если пользователя нет - ОШИБКА
       if (!user) {
         return res.status(401).json({ error: 'Пользователь не найден' });
       }
       
-      // Проверяем пароль
       if (user.password !== password) {
         return res.status(401).json({ error: 'Неверный пароль' });
       }
       
-      // Проверяем бан
       if (user.isBanned) {
         return res.status(403).json({ 
           error: 'Аккаунт забанен',
@@ -149,11 +146,12 @@ export default async function handler(req, res) {
       // Не отправляем пароль!
       const { password: _, ...safeUser } = user;
       
+      // ⚠️ ВАЖНО: Возвращаем реальную роль из базы
       return res.json({
         success: true,
         message: `Вход выполнен!`,
         user: safeUser,
-        isAdmin: user.role === 'admin'
+        isAdmin: user.role === 'admin' // ← ТОЛЬКО если роль = 'admin'
       });
     }
     
@@ -256,80 +254,14 @@ export default async function handler(req, res) {
       });
     }
     
-    // === МЬЮТ ===
-    if (action === 'mute') {
-      const { adminKey, targetUser, reason, duration = 60 } = body;
-      
-      if (adminKey !== 'secret123') {
-        return res.status(403).json({ error: 'Требуется ключ админа' });
-      }
-      
-      if (!targetUser) {
-        return res.status(400).json({ error: 'Укажите пользователя' });
-      }
-      
-      const user = db.users[targetUser];
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      
-      // Мьют
-      user.isMuted = true;
-      user.muteReason = reason || 'Спам';
-      user.muteStart = new Date().toISOString();
-      user.muteDuration = duration;
-      user.muteEnd = new Date(Date.now() + duration * 60000).toISOString();
-      db.users[targetUser] = user;
-      
-      const { password, ...safeUser } = user;
-      
-      return res.json({
-        success: true,
-        message: `Пользователь ${targetUser} замьючен на ${duration} минут`,
-        user: safeUser
-      });
-    }
-    
-    // === РАЗМЬЮТ ===
-    if (action === 'unmute') {
-      const { adminKey, targetUser } = body;
-      
-      if (adminKey !== 'secret123') {
-        return res.status(403).json({ error: 'Требуется ключ админа' });
-      }
-      
-      if (!targetUser) {
-        return res.status(400).json({ error: 'Укажите пользователя' });
-      }
-      
-      const user = db.users[targetUser];
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      
-      // Размьючиваем
-      user.isMuted = false;
-      user.muteReason = null;
-      user.muteStart = null;
-      user.muteEnd = null;
-      db.users[targetUser] = user;
-      
-      const { password, ...safeUser } = user;
-      
-      return res.json({
-        success: true,
-        message: `Пользователь ${targetUser} размьючен`,
-        user: safeUser
-      });
-    }
-    
     // === ПРОВЕРКА АПИ ===
     if (action === 'test') {
       return res.json({
         success: true,
         message: 'API работает!',
         usersCount: Object.keys(db.users).length,
-        users: Object.keys(db.users)
+        admins: Object.values(db.users).filter(u => u.role === 'admin').map(u => u.username),
+        adminList: db.ADMIN_USERS
       });
     }
     
@@ -337,8 +269,8 @@ export default async function handler(req, res) {
     if (!action) {
       return res.json({
         message: 'API работает!',
-        actions: ['register', 'login', 'users', 'ban', 'mute', 'test'],
-        totalUsers: Object.keys(db.users).length
+        actions: ['register', 'login', 'users', 'ban', 'test'],
+        adminUsers: db.ADMIN_USERS
       });
     }
     
@@ -349,4 +281,4 @@ export default async function handler(req, res) {
     console.error('❌ API Error:', error);
     return res.status(500).json({ error: 'Ошибка сервера' });
   }
-    }
+      }
