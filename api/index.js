@@ -1,6 +1,6 @@
-// api/index.js - ПОЛНАЯ ВЕРСИЯ С АДМИНКОЙ
+// api/index.js - ТОЛЬКО ТВОЙ АККАУНТ = АДМИН
 export default async function handler(req, res) {
-  console.log('🚀 API called!');
+  console.log('🚀 API called:', req.query.action);
   
   try {
     // Разрешаем CORS
@@ -8,40 +8,26 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    // Если OPTIONS запрос
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
     }
     
     const { action } = req.query;
-    console.log('Action:', action, 'Body:', req.body);
     
     // ВРЕМЕННАЯ БАЗА В ПАМЯТИ
-    // При перезапуске сервера сбросится - потом заменим на Vercel KV
     let memoryDB = {
       users: {},
-      admins: new Set(['admin']), // admin всегда админ
+      admins: new Set(),
       banned: new Set(),
       muted: new Set()
     };
-    
-    // === ТЕСТ API ===
-    if (!action) {
-      return res.status(200).json({
-        message: '✅ API работает!',
-        timestamp: new Date().toISOString(),
-        actions: ['register', 'login', 'users', 'ban', 'unban', 'mute', 'unmute', 'stats']
-      });
-    }
     
     // === РЕГИСТРАЦИЯ ===
     if (action === 'register') {
       const { username, password } = req.body || {};
       
       if (!username || !password) {
-        return res.status(400).json({
-          error: 'Нужны имя пользователя и пароль'
-        });
+        return res.status(400).json({ error: 'Нужны имя и пароль' });
       }
       
       if (username.length < 3) {
@@ -52,21 +38,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Пароль от 6 символов' });
       }
       
-      // Проверяем есть ли пользователь
+      // Проверяем существование
       if (memoryDB.users[username]) {
         return res.status(400).json({ error: 'Имя занято' });
       }
       
-      // Первый пользователь или имя с "admin" = админ
-      const isFirstUser = Object.keys(memoryDB.users).length === 0;
-      const hasAdminInName = username.toLowerCase().includes('admin');
-      const isAdmin = isFirstUser || hasAdminInName;
+      // ТОЛЬКО ТВОЙ АККАУНТ - АДМИН
+      // ЗАМЕНИ 'твой_ник' НА СВОЙ РЕАЛЬНЫЙ НИК!
+      const ADMIN_USERNAMES = ['твой_ник', 'admin']; 
+      const isAdmin = ADMIN_USERNAMES.includes(username.toLowerCase());
       
       // Создаем пользователя
       const user = {
         username,
         id: Date.now().toString(),
-        password, // ВНИМАНИЕ: в проде хэшируй!
+        password,
         role: isAdmin ? 'admin' : 'user',
         createdAt: new Date().toISOString(),
         isBanned: false,
@@ -81,9 +67,10 @@ export default async function handler(req, res) {
       memoryDB.users[username] = user;
       if (isAdmin) {
         memoryDB.admins.add(username);
+        console.log(`👑 Новый админ: ${username}`);
       }
       
-      // Не отправляем пароль обратно!
+      // Не отправляем пароль!
       const { password: _, ...safeUser } = user;
       
       return res.status(200).json({
@@ -97,10 +84,6 @@ export default async function handler(req, res) {
     // === ВХОД ===
     if (action === 'login') {
       const { username, password } = req.body || {};
-      
-      if (!username || !password) {
-        return res.status(400).json({ error: 'Нужны имя и пароль' });
-      }
       
       const user = memoryDB.users[username];
       
@@ -119,7 +102,7 @@ export default async function handler(req, res) {
         });
       }
       
-      // Обновляем последний вход
+      // Обновляем вход
       user.lastLogin = new Date().toISOString();
       memoryDB.users[username] = user;
       
@@ -133,11 +116,11 @@ export default async function handler(req, res) {
       });
     }
     
-    // === ПОЛУЧИТЬ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ (админ) ===
+    // === ВСЕ ПОЛЬЗОВАТЕЛИ (админ) ===
     if (action === 'users') {
       const { adminKey } = req.body || {};
       
-      // Простая проверка админского ключа
+      // Простая проверка
       if (adminKey !== 'secret123') {
         return res.status(403).json({ error: 'Требуется ключ админа' });
       }
@@ -159,7 +142,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // === БАН ПОЛЬЗОВАТЕЛЯ ===
+    // === БАН ===
     if (action === 'ban') {
       const { adminKey, targetUser, reason } = req.body || {};
       
@@ -198,7 +181,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // === РАЗБАН ПОЛЬЗОВАТЕЛЯ ===
+    // === РАЗБАН ===
     if (action === 'unban') {
       const { adminKey, targetUser } = req.body || {};
       
@@ -231,7 +214,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // === МЬЮТ ПОЛЬЗОВАТЕЛЯ ===
+    // === МЬЮТ ===
     if (action === 'mute') {
       const { adminKey, targetUser, reason, duration = 60 } = req.body || {};
       
@@ -248,7 +231,7 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Пользователь не найден' });
       }
       
-      // Замьючиваем
+      // Мьют
       user.isMuted = true;
       user.muteReason = reason || 'Спам';
       user.muteStart = new Date().toISOString();
@@ -266,7 +249,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // === РАЗМЬЮТ ПОЛЬЗОВАТЕЛЯ ===
+    // === РАЗМЬЮТ ===
     if (action === 'unmute') {
       const { adminKey, targetUser } = req.body || {};
       
@@ -283,7 +266,7 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Пользователь не найден' });
       }
       
-      // Размьючиваем
+      // Размьют
       user.isMuted = false;
       user.muteReason = null;
       user.muteStart = null;
@@ -300,42 +283,46 @@ export default async function handler(req, res) {
       });
     }
     
-    // === СТАТИСТИКА ===
-    if (action === 'stats') {
-      const users = Object.values(memoryDB.users);
+    // === СДЕЛАТЬ АДМИНОМ (только для тебя) ===
+    if (action === 'makeadmin') {
+      const { masterKey, targetUser } = req.body || {};
+      
+      // СУПЕР СЕКРЕТНЫЙ КЛЮЧ - НИКОМУ НЕ ГОВОРИ!
+      const MASTER_KEY = 'BEEN_RUSSIA_MASTER_KEY_2025';
+      
+      if (masterKey !== MASTER_KEY) {
+        return res.status(403).json({ error: 'Неверный ключ' });
+      }
+      
+      if (!targetUser) {
+        return res.status(400).json({ error: 'Укажите пользователя' });
+      }
+      
+      const user = memoryDB.users[targetUser];
+      if (!user) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      
+      // Делаем админом
+      user.role = 'admin';
+      memoryDB.users[targetUser] = user;
+      memoryDB.admins.add(targetUser);
       
       return res.status(200).json({
         success: true,
-        stats: {
-          totalUsers: users.length,
-          admins: Array.from(memoryDB.admins).length,
-          banned: Array.from(memoryDB.banned).length,
-          muted: Array.from(memoryDB.muted).length,
-          active: users.filter(u => !u.isBanned && !u.isMuted).length
-        },
-        users: users.map(u => ({
-          username: u.username,
-          role: u.role,
-          isBanned: u.isBanned,
-          isMuted: u.isMuted,
-          createdAt: u.createdAt
-        }))
+        message: `✅ ${targetUser} теперь админ!`,
+        user: {
+          username: user.username,
+          role: user.role
+        }
       });
     }
     
     // Неизвестное действие
-    return res.status(404).json({
-      error: 'Неизвестное действие',
-      action: action,
-      help: 'Используйте: register, login, users, ban, unban, mute, unmute, stats'
-    });
+    return res.status(404).json({ error: 'Неизвестное действие' });
     
   } catch (error) {
     console.error('❌ API Error:', error);
-    
-    return res.status(500).json({
-      error: 'Внутренняя ошибка',
-      message: error.message
-    });
+    return res.status(500).json({ error: 'Ошибка сервера' });
   }
-  }
+    }
