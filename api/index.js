@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       
       // ТОЛЬКО ТВОЙ АККАУНТ - АДМИН
       // ЗАМЕНИ 'твой_ник' НА СВОЙ РЕАЛЬНЫЙ НИК!
-      const ADMIN_USERNAMES = ['твой_ник', 'admin']; 
+      const ADMIN_USERNAMES = ['Nikita', 'admin']; 
       const isAdmin = ADMIN_USERNAMES.includes(username.toLowerCase());
       
       // Создаем пользователя
