@@ -212,7 +212,7 @@
             document.getElementById('showLoginBtn').addEventListener('click', showLogin);
         }
 
-        // ========== API ФУНКЦИИ ==========
+        // ========== API ФУНКЦИИ (ИСПРАВЛЕННЫЕ) ==========
         async function apiCall(action, data = {}) {
             console.log(`📞 API Call: ${action}`, data);
             
@@ -226,21 +226,29 @@
                     body: JSON.stringify(data)
                 });
                 
-                console.log('Response status:', response.status);
+                console.log('Response status:', response.status, response.statusText);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status}`);
+                    // Если сервер вернул ошибку, пытаемся получить JSON
+                    try {
+                        const errorData = await response.json();
+                        console.log('Error response:', errorData);
+                        return errorData; // Возвращаем ошибку от сервера
+                    } catch (e) {
+                        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                    }
                 }
                 
                 const result = await response.json();
-                console.log(`✅ API Response:`, result);
+                console.log(`✅ API Success (${action}):`, result);
                 return result;
                 
             } catch (error) {
-                console.error(`❌ API Error:`, error);
+                console.error(`❌ API Error (${action}):`, error);
                 return { 
                     error: 'Ошибка сети',
-                    message: 'Проверьте подключение к интернету'
+                    message: 'Не удалось подключиться к серверу. Проверьте интернет.',
+                    details: error.message
                 };
             }
         }
@@ -328,7 +336,7 @@
             document.getElementById('registerError').textContent = '';
         }
 
-        // ========== РЕГИСТРАЦИЯ ==========
+         // ========== РЕГИСТРАЦИЯ ==========
         async function register() {
             const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value;
@@ -336,299 +344,299 @@
             const errorElement = document.getElementById('registerError');
 
             if (!username || !password || !passwordConfirm) {
-            errorElement.textContent = 'Заполните все поля';
-            return;
-        }
+                errorElement.textContent = 'Заполните все поля';
+                return;
+            }
 
-        if (username.length < 3) {
-            errorElement.textContent = 'Имя пользователя должно быть не менее 3 символов';
-            return;
-        }
+            if (username.length < 3) {
+                errorElement.textContent = 'Имя пользователя должно быть не менее 3 символов';
+                return;
+            }
 
-        if (password.length < 6) {
-            errorElement.textContent = 'Пароль должен быть не менее 6 символов';
-            return;
-        }
+            if (password.length < 6) {
+                errorElement.textContent = 'Пароль должен быть не менее 6 символов';
+                return;
+            }
 
-        if (password !== passwordConfirm) {
-            errorElement.textContent = 'Пароли не совпадают';
-            return;
-        }
+            if (password !== passwordConfirm) {
+                errorElement.textContent = 'Пароли не совпадают';
+                return;
+            }
 
-        const result = await apiCall('register', { username, password });
-        
-        if (result.error) {
-            errorElement.textContent = result.message || result.error;
-            return;
-        }
-
-        const userData = {
-            username: username,
-            id: result.user?.id,
-            role: result.user?.role || 'user',
-            isAdmin: result.isAdmin || false
-        };
-        
-        localStorage.setItem('been_russia_user', JSON.stringify(userData));
-        currentUser = userData;
-        isAdmin = userData.isAdmin;
-
-        addHistory('Регистрация в системе', username);
-        showAuthenticatedUI(userData);
-    }
-
-    // ========== ВХОД ==========
-    async function login() {
-        const username = document.getElementById('loginUsername').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        const errorElement = document.getElementById('loginError');
-
-        if (!username || !password) {
-            errorElement.textContent = 'Заполните все поля';
-            return;
-        }
-
-        const result = await apiCall('login', { username, password });
-        
-        if (result.error) {
-            errorElement.textContent = result.message || result.error;
-            return;
-        }
-
-        const userData = {
-            username: username,
-            id: result.user?.id,
-            role: result.user?.role || 'user',
-            isAdmin: result.isAdmin || false
-        };
-        
-        localStorage.setItem('been_russia_user', JSON.stringify(userData));
-        currentUser = userData;
-        isAdmin = userData.isAdmin;
-
-        addHistory('Вход в систему', username);
-        showAuthenticatedUI(userData);
-    }
-
-    // ========== ВЫХОД ==========
-    function logout() {
-        if (currentUser) {
-            addHistory('Выход из системы', currentUser.username);
-        }
-
-        localStorage.removeItem('been_russia_user');
-        currentUser = null;
-        isAdmin = false;
-        
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('regUsername').value = '';
-        document.getElementById('regPassword').value = '';
-        document.getElementById('regPasswordConfirm').value = '';
-        
-        showAuthForms();
-    }
-
-    // ========== СТРАНИЦЫ ==========
-    function showPage(pageId) {
-        document.querySelectorAll('.page').forEach(page => {
-            page.classList.remove('active');
-        });
-        document.getElementById(pageId).classList.add('active');
-
-        if (pageId === 'pageHistory') {
-            loadHistory();
-        }
-    }
-
-    // ========== ИСТОРИЯ ==========
-    function addHistory(action, username) {
-        const history = JSON.parse(localStorage.getItem(`been_russia_history_${username}`)) || [];
-        
-        const historyItem = {
-            action: action,
-            timestamp: new Date().toLocaleString('ru-RU'),
-            date: new Date().toISOString()
-        };
-
-        history.unshift(historyItem);
-        if (history.length > 50) history.pop();
-
-        localStorage.setItem(`been_russia_history_${username}`, JSON.stringify(history));
-    }
-
-    function loadHistory() {
-        if (!currentUser) return;
-
-        const history = JSON.parse(localStorage.getItem(`been_russia_history_${currentUser.username}`)) || [];
-        const historyList = document.getElementById('historyList');
-
-        if (history.length === 0) {
-            historyList.innerHTML = '<div class="history-item"><div class="history-text">История активности пуста</div></div>';
-            return;
-        }
-
-        historyList.innerHTML = history.map(item => `
-            <div class="history-item">
-                <div class="history-time">${item.timestamp}</div>
-                <div class="history-text">${item.action}</div>
-            </div>
-        `).join('');
-    }
-
-    // ========== АДМИН ФУНКЦИИ ==========
-    function toggleAdminPanel() {
-        const panel = document.getElementById('adminPanel');
-        panel.classList.toggle('active');
-        
-        if (panel.classList.contains('active')) {
-            refreshUsers();
-        }
-    }
-
-    async function refreshUsers() {
-        if (!isAdmin) return;
-        
-        const result = await adminApiCall('users');
-        if (result.error) {
-            alert('Ошибка: ' + result.error);
-            return;
-        }
-
-        const usersList = document.getElementById('usersList');
-        const users = result.users || [];
-        
-        let html = '';
-        users.forEach(user => {
-            const status = user.isBanned ? '🚫 ЗАБАНЕН' : (user.isMuted ? '🔇 МЬЮТ' : '✅ Активен');
-            const roleBadge = user.role === 'admin' ? '<span class="admin-badge">ADMIN</span>' : '';
+            const result = await apiCall('register', { username, password });
             
-            html += `
-                <div class="user-item">
-                    <div>
-                        <strong>${user.username}</strong> ${roleBadge}<br>
-                        <small>ID: ${user.id} | ${status}</small>
-                    </div>
-                    <div class="user-actions">
-                        ${user.role !== 'admin' ? `
-                            <button class="admin-btn" onclick="quickAction('ban', '${user.username}')">🚫</button>
-                            <button class="admin-btn" onclick="quickAction('mute', '${user.username}')">🔇</button>
-                        ` : ''}
-                    </div>
+            if (result.error) {
+                errorElement.textContent = result.message || result.error;
+                return;
+            }
+
+            const userData = {
+                username: username,
+                id: result.user?.id,
+                role: result.user?.role || 'user',
+                isAdmin: result.isAdmin || false
+            };
+            
+            localStorage.setItem('been_russia_user', JSON.stringify(userData));
+            currentUser = userData;
+            isAdmin = userData.isAdmin;
+
+            addHistory('Регистрация в системе', username);
+            showAuthenticatedUI(userData);
+        }
+
+        // ========== ВХОД ==========
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorElement = document.getElementById('loginError');
+
+            if (!username || !password) {
+                errorElement.textContent = 'Заполните все поля';
+                return;
+            }
+
+            const result = await apiCall('login', { username, password });
+            
+            if (result.error) {
+                errorElement.textContent = result.message || result.error;
+                return;
+            }
+
+            const userData = {
+                username: username,
+                id: result.user?.id,
+                role: result.user?.role || 'user',
+                isAdmin: result.isAdmin || false
+            };
+            
+            localStorage.setItem('been_russia_user', JSON.stringify(userData));
+            currentUser = userData;
+            isAdmin = userData.isAdmin;
+
+            addHistory('Вход в систему', username);
+            showAuthenticatedUI(userData);
+        }
+
+        // ========== ВЫХОД ==========
+        function logout() {
+            if (currentUser) {
+                addHistory('Выход из системы', currentUser.username);
+            }
+
+            localStorage.removeItem('been_russia_user');
+            currentUser = null;
+            isAdmin = false;
+            
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regPasswordConfirm').value = '';
+            
+            showAuthForms();
+        }
+
+        // ========== СТРАНИЦЫ ==========
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+
+            if (pageId === 'pageHistory') {
+                loadHistory();
+            }
+        }
+
+        // ========== ИСТОРИЯ ==========
+        function addHistory(action, username) {
+            const history = JSON.parse(localStorage.getItem(`been_russia_history_${username}`)) || [];
+            
+            const historyItem = {
+                action: action,
+                timestamp: new Date().toLocaleString('ru-RU'),
+                date: new Date().toISOString()
+            };
+
+            history.unshift(historyItem);
+            if (history.length > 50) history.pop();
+
+            localStorage.setItem(`been_russia_history_${username}`, JSON.stringify(history));
+        }
+
+        function loadHistory() {
+            if (!currentUser) return;
+
+            const history = JSON.parse(localStorage.getItem(`been_russia_history_${currentUser.username}`)) || [];
+            const historyList = document.getElementById('historyList');
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="history-item"><div class="history-text">История активности пуста</div></div>';
+                return;
+            }
+
+            historyList.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div class="history-time">${item.timestamp}</div>
+                    <div class="history-text">${item.action}</div>
                 </div>
-            `;
-        });
-        
-        usersList.innerHTML = html || '<p>Нет пользователей</p>';
-        document.getElementById('totalUsers').textContent = users.length;
-        document.getElementById('adminCount').textContent = users.filter(u => u.role === 'admin').length;
-        document.getElementById('bannedCount').textContent = users.filter(u => u.isBanned).length;
-    }
-
-    async function adminBanUser() {
-        const username = document.getElementById('banUsername').value.trim();
-        const reason = document.getElementById('banReason').value.trim() || 'Без причины';
-        
-        if (!username) {
-            alert('Введите имя пользователя');
-            return;
+            `).join('');
         }
 
-        if (!confirm(`Забанить пользователя ${username}?`)) return;
-
-        const result = await adminApiCall('ban', { 
-            targetUser: username, 
-            reason: reason 
-        });
-        
-        if (result.error) {
-            alert('Ошибка: ' + result.error);
-        } else {
-            alert(`Пользователь ${username} забанен`);
-            document.getElementById('banUsername').value = '';
-            document.getElementById('banReason').value = '';
-            refreshUsers();
-        }
-    }
-
-    async function adminUnbanUser() {
-        const username = document.getElementById('banUsername').value.trim();
-        if (!username) {
-            alert('Введите имя пользователя');
-            return;
+        // ========== АДМИН ФУНКЦИИ ==========
+        function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+            
+            if (panel.classList.contains('active')) {
+                refreshUsers();
+            }
         }
 
-        const result = await adminApiCall('unban', { targetUser: username });
-        
-        if (result.error) {
-            alert('Ошибка: ' + result.error);
-        } else {
-            alert(`Пользователь ${username} разбанен`);
-            refreshUsers();
-        }
-    }
+        async function refreshUsers() {
+            if (!isAdmin) return;
+            
+            const result = await adminApiCall('users');
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+                return;
+            }
 
-    async function adminMuteUser() {
-        const username = document.getElementById('banUsername').value.trim();
-        const reason = document.getElementById('banReason').value.trim() || 'Без причины';
-        
-        if (!username) {
-            alert('Введите имя пользователя');
-            return;
+            const usersList = document.getElementById('usersList');
+            const users = result.users || [];
+            
+            let html = '';
+            users.forEach(user => {
+                const status = user.isBanned ? '🚫 ЗАБАНЕН' : (user.isMuted ? '🔇 МЬЮТ' : '✅ Активен');
+                const roleBadge = user.role === 'admin' ? '<span class="admin-badge">ADMIN</span>' : '';
+                
+                html += `
+                    <div class="user-item">
+                        <div>
+                            <strong>${user.username}</strong> ${roleBadge}<br>
+                            <small>ID: ${user.id} | ${status}</small>
+                        </div>
+                        <div class="user-actions">
+                            ${user.role !== 'admin' ? `
+                                <button class="admin-btn" onclick="quickAction('ban', '${user.username}')">🚫</button>
+                                <button class="admin-btn" onclick="quickAction('mute', '${user.username}')">🔇</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            usersList.innerHTML = html || '<p>Нет пользователей</p>';
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('adminCount').textContent = users.filter(u => u.role === 'admin').length;
+            document.getElementById('bannedCount').textContent = users.filter(u => u.isBanned).length;
         }
 
-        const result = await adminApiCall('mute', { 
-            targetUser: username, 
-            reason: reason,
-            duration: 60
-        });
-        
-        if (result.error) {
-            alert('Ошибка: ' + result.error);
-        } else {
-            alert(`Пользователь ${username} замьючен на 60 минут`);
-            refreshUsers();
-        }
-    }
+        async function adminBanUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            const reason = document.getElementById('banReason').value.trim() || 'Без причины';
+            
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
 
-    async function adminUnmuteUser() {
-        const username = document.getElementById('banUsername').value.trim();
-        if (!username) {
-            alert('Введите имя пользователя');
-            return;
+            if (!confirm(`Забанить пользователя ${username}?`)) return;
+
+            const result = await adminApiCall('ban', { 
+                targetUser: username, 
+                reason: reason 
+            });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} забанен`);
+                document.getElementById('banUsername').value = '';
+                document.getElementById('banReason').value = '';
+                refreshUsers();
+            }
         }
 
-        const result = await adminApiCall('unmute', { targetUser: username });
-        
-        if (result.error) {
-            alert('Ошибка: ' + result.error);
-        } else {
-            alert(`Пользователь ${username} размьючен`);
-            refreshUsers();
-        }
-    }
+        async function adminUnbanUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
 
-    function quickAction(action, username) {
-        document.getElementById('banUsername').value = username;
-        
-        if (action === 'ban') {
-            document.getElementById('banReason').value = 'Нарушение правил';
-            adminBanUser();
-        } else if (action === 'mute') {
-            document.getElementById('banReason').value = 'Спам в чате';
-            adminMuteUser();
+            const result = await adminApiCall('unban', { targetUser: username });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} разбанен`);
+                refreshUsers();
+            }
         }
-    }
 
-    // Делаем функции глобальными
-    window.showPage = showPage;
-    window.toggleAdminPanel = toggleAdminPanel;
-    window.adminBanUser = adminBanUser;
-    window.adminUnbanUser = adminUnbanUser;
-    window.adminMuteUser = adminMuteUser;
-    window.adminUnmuteUser = adminUnmuteUser;
-    window.refreshUsers = refreshUsers;
-    window.quickAction = quickAction;
-</script>
+        async function adminMuteUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            const reason = document.getElementById('banReason').value.trim() || 'Без причины';
+            
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            const result = await adminApiCall('mute', { 
+                targetUser: username, 
+                reason: reason,
+                duration: 60
+            });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} замьючен на 60 минут`);
+                refreshUsers();
+            }
+        }
+
+        async function adminUnmuteUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            const result = await adminApiCall('unmute', { targetUser: username });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} размьючен`);
+                refreshUsers();
+            }
+        }
+
+        function quickAction(action, username) {
+            document.getElementById('banUsername').value = username;
+            
+            if (action === 'ban') {
+                document.getElementById('banReason').value = 'Нарушение правил';
+                adminBanUser();
+            } else if (action === 'mute') {
+                document.getElementById('banReason').value = 'Спам в чате';
+                adminMuteUser();
+            }
+        }
+
+        // Делаем функции глобальными
+        window.showPage = showPage;
+        window.toggleAdminPanel = toggleAdminPanel;
+        window.adminBanUser = adminBanUser;
+        window.adminUnbanUser = adminUnbanUser;
+        window.adminMuteUser = adminMuteUser;
+        window.adminUnmuteUser = adminUnmuteUser;
+        window.refreshUsers = refreshUsers;
+        window.quickAction = quickAction;
+    </script>
 </body>
 </html>
