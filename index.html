@@ -50,8 +50,24 @@
         .history-item { padding: 15px; margin-bottom: 10px; background: rgba(0, 40, 80, 0.3); border-radius: 8px; border-left: 4px solid #00a8ff; }
         .history-time { color: #9c88ff; font-size: 14px; margin-bottom: 5px; }
         .history-text { color: #fff; }
+        
+        /* Стили админки */
+        .admin-badge { background: linear-gradient(90deg, #ff0080, #9c88ff); color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; margin-left: 10px; font-weight: bold; }
+        .admin-panel { background: rgba(20, 10, 40, 0.9); border: 2px solid #9c88ff; border-radius: 15px; padding: 20px; margin-top: 20px; display: none; }
+        .admin-panel.active { display: block; animation: fadeIn 0.5s; }
+        .admin-title { color: #ff0080; font-size: 24px; margin-bottom: 20px; text-align: center; }
+        .admin-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .admin-section { background: rgba(0, 20, 40, 0.6); padding: 20px; border-radius: 10px; border: 1px solid rgba(0, 200, 255, 0.3); }
+        .admin-input { width: 100%; padding: 10px; margin: 10px 0; background: rgba(0, 0, 0, 0.3); border: 1px solid #9c88ff; border-radius: 5px; color: white; }
+        .admin-btn { background: linear-gradient(90deg, #ff0080, #9c88ff); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; font-weight: bold; }
+        .admin-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 0, 128, 0.4); }
+        .danger-btn { background: linear-gradient(90deg, #ff0000, #ff5555); }
+        .users-list { max-height: 300px; overflow-y: auto; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; margin: 5px 0; background: rgba(0, 40, 80, 0.3); border-radius: 5px; }
+        .user-actions { display: flex; gap: 10px; }
+        
         footer { margin-top: 60px; padding: 30px 0; text-align: center; border-top: 1px solid rgba(0, 200, 255, 0.3); color: #888; font-size: 14px; }
-        @media (max-width: 768px) { header { flex-direction: column; gap: 20px; } .nav-auth { width: 100%; justify-content: center; } .auth-container { margin: 20px; padding: 30px; } .page { padding: 20px; } }
+        @media (max-width: 768px) { header { flex-direction: column; gap: 20px; } .nav-auth { width: 100%; justify-content: center; } .auth-container { margin: 20px; padding: 30px; } .page { padding: 20px; } .admin-controls { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -110,10 +126,43 @@
 
         <div class="main-content" id="mainContent">
             <div class="nav-menu" id="navMenu"></div>
+            
+            <!-- Админ панель -->
+            <div class="admin-panel" id="adminPanel">
+                <div class="admin-title">⚙️ Панель Администратора</div>
+                <div class="admin-controls">
+                    <div class="admin-section">
+                        <h3>👥 Управление пользователями</h3>
+                        <div class="users-list" id="usersList">
+                            <p>Загрузка пользователей...</p>
+                        </div>
+                    </div>
+                    <div class="admin-section">
+                        <h3>🔨 Быстрые действия</h3>
+                        <input type="text" class="admin-input" id="banUsername" placeholder="Имя пользователя">
+                        <input type="text" class="admin-input" id="banReason" placeholder="Причина">
+                        <button class="admin-btn" onclick="adminBanUser()">🚫 Забанить</button>
+                        <button class="admin-btn" onclick="adminUnbanUser()">✅ Разбанить</button>
+                        <button class="admin-btn" onclick="adminMuteUser()">🔇 Замьютить</button>
+                        <button class="admin-btn" onclick="adminUnmuteUser()">🔊 Размьютить</button>
+                    </div>
+                    <div class="admin-section">
+                        <h3>📊 Информация</h3>
+                        <p>Всего пользователей: <span id="totalUsers">0</span></p>
+                        <p>Админов: <span id="adminCount">0</span></p>
+                        <p>Забаненных: <span id="bannedCount">0</span></p>
+                        <button class="admin-btn" onclick="refreshUsers()">🔄 Обновить</button>
+                        <button class="admin-btn danger-btn" onclick="clearAllData()">⚠️ Очистить ВСЕ данные</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Основные страницы -->
             <div class="page active" id="pageHome">
                 <div class="page-title">Главная</div>
                 <div class="page-content">
                     Добро пожаловать в <strong>Been Russia</strong> — галактический портал для избранных.<br><br>
+                    <button class="nav-btn" onclick="toggleAdminPanel()" id="adminToggleBtn" style="display:none;">⚙️ Панель админа</button>
                     <div class="construction">🚧 Раздел в разработке 🚧</div>
                 </div>
             </div>
@@ -128,10 +177,16 @@
         <footer>
             <p>Been Russia Galactic Portal © 2025</p>
             <p>Доступ предоставляется только авторизованным пользователям</p>
+            <p style="font-size: 12px; color: #555;">База данных: Vercel KV | Все пользователи в одной системе</p>
         </footer>
     </div>
 
     <script>
+        // ========== КОНФИГУРАЦИЯ ==========
+        const API_URL = 'https://been-site-ochre.vercel.app/api';
+        let currentUser = null;
+        let isAdmin = false;
+
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         document.addEventListener('DOMContentLoaded', function() {
             createStars();
@@ -160,12 +215,34 @@
             document.getElementById('showLoginBtn').addEventListener('click', showLogin);
         }
 
+        // ========== API ФУНКЦИИ ==========
+        async function apiCall(action, data = {}) {
+            try {
+                const response = await fetch(`${API_URL}?action=${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('API error:', error);
+                return { error: 'Ошибка сети. Проверьте подключение.' };
+            }
+        }
+
+        async function adminApiCall(action, data = {}) {
+            data.adminKey = 'secret123'; // Простой ключ админа
+            return await apiCall(action, data);
+        }
+
         // ========== АВТОРИЗАЦИЯ ==========
         function checkAuth() {
-            const user = localStorage.getItem('been_russia_user');
-            if (user) {
+            const userStr = localStorage.getItem('been_russia_user');
+            if (userStr) {
                 try {
-                    const userData = JSON.parse(user);
+                    const userData = JSON.parse(userStr);
+                    currentUser = userData;
+                    isAdmin = userData.isAdmin || false;
                     showAuthenticatedUI(userData);
                 } catch (e) {
                     localStorage.removeItem('been_russia_user');
@@ -188,15 +265,23 @@
             
             // Обновляем шапку
             const firstLetter = userData.username.charAt(0).toUpperCase();
+            let adminBadge = '';
+            if (userData.isAdmin) {
+                adminBadge = '<span class="admin-badge">ADMIN</span>';
+            }
+            
             document.getElementById('navAuth').innerHTML = `
                 <div class="user-info">
                     <div class="user-avatar">${firstLetter}</div>
-                    <div class="username">${userData.username}</div>
+                    <div>
+                        <div class="username">${userData.username} ${adminBadge}</div>
+                        <div style="font-size:12px;color:#888;">${userData.role || 'user'}</div>
+                    </div>
                 </div>
                 <button class="nav-btn logout-btn" id="logoutBtn">Выйти</button>
             `;
             
-            // Добавляем обработчик выхода
+            // Обработчик выхода
             document.getElementById('logoutBtn').addEventListener('click', logout);
             
             // Обновляем меню
@@ -204,6 +289,11 @@
                 <button class="nav-btn" onclick="showPage('pageHome')">Главная</button>
                 <button class="nav-btn" onclick="showPage('pageHistory')">История</button>
             `;
+            
+            // Показываем кнопку админки если админ
+            if (userData.isAdmin) {
+                document.getElementById('adminToggleBtn').style.display = 'block';
+            }
             
             loadHistory();
         }
@@ -227,7 +317,7 @@
         }
 
         // ========== РЕГИСТРАЦИЯ ==========
-        function register() {
+        async function register() {
             const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value;
             const passwordConfirm = document.getElementById('regPasswordConfirm').value;
@@ -239,12 +329,7 @@
                 return;
             }
 
-            if (username.length < 3) {
-                errorElement.textContent = 'Имя пользователя должно быть не менее 3 символов';
-                return;
-            }
-
-            if (password.length < 6) {
+                        if (password.length < 6) {
                 errorElement.textContent = 'Пароль должен быть не менее 6 символов';
                 return;
             }
@@ -254,24 +339,25 @@
                 return;
             }
 
-            // Проверка существующего пользователя
-            const existingUser = localStorage.getItem(`been_russia_user_${username}`);
-            if (existingUser) {
-                errorElement.textContent = 'Пользователь с таким именем уже существует';
+            // Вызов API
+            const result = await apiCall('register', { username, password });
+            
+            if (result.error) {
+                errorElement.textContent = result.message || result.error;
                 return;
             }
 
-            // Создание пользователя
+            // Сохраняем пользователя
             const userData = {
                 username: username,
-                password: password,
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString()
+                id: result.user?.id,
+                role: result.user?.role || 'user',
+                isAdmin: result.isAdmin || false
             };
-
-            // Сохранение
-            localStorage.setItem(`been_russia_user_${username}`, JSON.stringify(userData));
+            
             localStorage.setItem('been_russia_user', JSON.stringify(userData));
+            currentUser = userData;
+            isAdmin = userData.isAdmin;
 
             // Добавляем запись в историю
             addHistory('Регистрация в системе', username);
@@ -281,7 +367,7 @@
         }
 
         // ========== ВХОД ==========
-        function login() {
+        async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             const errorElement = document.getElementById('loginError');
@@ -291,25 +377,25 @@
                 return;
             }
 
-            // Проверка пользователя
-            const userDataStr = localStorage.getItem(`been_russia_user_${username}`);
-            if (!userDataStr) {
-                errorElement.textContent = 'Пользователь не найден';
+            // Вызов API
+            const result = await apiCall('login', { username, password });
+            
+            if (result.error) {
+                errorElement.textContent = result.message || result.error;
                 return;
             }
 
-            const userData = JSON.parse(userDataStr);
-
-            // Проверка пароля
-            if (userData.password !== password) {
-                errorElement.textContent = 'Неверный пароль';
-                return;
-            }
-
-            // Обновляем время последнего входа
-            userData.lastLogin = new Date().toISOString();
-            localStorage.setItem(`been_russia_user_${username}`, JSON.stringify(userData));
+            // Сохраняем пользователя
+            const userData = {
+                username: username,
+                id: result.user?.id,
+                role: result.user?.role || 'user',
+                isAdmin: result.isAdmin || false
+            };
+            
             localStorage.setItem('been_russia_user', JSON.stringify(userData));
+            currentUser = userData;
+            isAdmin = userData.isAdmin;
 
             // Добавляем запись в историю
             addHistory('Вход в систему', username);
@@ -320,12 +406,13 @@
 
         // ========== ВЫХОД ==========
         function logout() {
-            const currentUser = JSON.parse(localStorage.getItem('been_russia_user'));
             if (currentUser) {
                 addHistory('Выход из системы', currentUser.username);
             }
 
             localStorage.removeItem('been_russia_user');
+            currentUser = null;
+            isAdmin = false;
             
             // Очищаем формы
             document.getElementById('loginUsername').value = '';
@@ -366,7 +453,6 @@
         }
 
         function loadHistory() {
-            const currentUser = JSON.parse(localStorage.getItem('been_russia_user'));
             if (!currentUser) return;
 
             const history = JSON.parse(localStorage.getItem(`been_russia_history_${currentUser.username}`)) || [];
@@ -385,7 +471,174 @@
             `).join('');
         }
 
-        // Делаем функции глобальными для обработчиков onclick
+        // ========== АДМИН ФУНКЦИИ ==========
+        function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+            
+            if (panel.classList.contains('active')) {
+                refreshUsers();
+            }
+        }
+
+        async function refreshUsers() {
+            if (!isAdmin) return;
+            
+            const result = await adminApiCall('users');
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+                return;
+            }
+
+            const usersList = document.getElementById('usersList');
+            const users = result.users || [];
+            
+            let html = '';
+            users.forEach(user => {
+                const status = user.isBanned ? '🚫 ЗАБАНЕН' : (user.isMuted ? '🔇 МЬЮТ' : '✅ Активен');
+                const roleBadge = user.role === 'admin' ? '<span class="admin-badge">ADMIN</span>' : '';
+                
+                html += `
+                    <div class="user-item">
+                        <div>
+                            <strong>${user.username}</strong> ${roleBadge}<br>
+                            <small>ID: ${user.id} | ${status}</small>
+                        </div>
+                        <div class="user-actions">
+                            ${user.role !== 'admin' ? `
+                                <button class="admin-btn" onclick="quickAction('ban', '${user.username}')">🚫</button>
+                                <button class="admin-btn" onclick="quickAction('mute', '${user.username}')">🔇</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            usersList.innerHTML = html || '<p>Нет пользователей</p>';
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('adminCount').textContent = users.filter(u => u.role === 'admin').length;
+            document.getElementById('bannedCount').textContent = users.filter(u => u.isBanned).length;
+        }
+
+        async function adminBanUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            const reason = document.getElementById('banReason').value.trim() || 'Без причины';
+            
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            if (!confirm(`Забанить пользователя ${username}?`)) return;
+
+            const result = await adminApiCall('ban', { 
+                targetUser: username, 
+                reason: reason 
+            });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} забанен`);
+                document.getElementById('banUsername').value = '';
+                document.getElementById('banReason').value = '';
+                refreshUsers();
+            }
+        }
+
+        async function adminUnbanUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            const result = await adminApiCall('unban', { targetUser: username });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} разбанен`);
+                refreshUsers();
+            }
+        }
+
+        async function adminMuteUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            const reason = document.getElementById('banReason').value.trim() || 'Без причины';
+            
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            const result = await adminApiCall('mute', { 
+                targetUser: username, 
+                reason: reason,
+                duration: 60 // 60 минут
+            });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} замьючен на 60 минут`);
+                refreshUsers();
+            }
+        }
+
+        async function adminUnmuteUser() {
+            const username = document.getElementById('banUsername').value.trim();
+            if (!username) {
+                alert('Введите имя пользователя');
+                return;
+            }
+
+            const result = await adminApiCall('unmute', { targetUser: username });
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert(`Пользователь ${username} размьючен`);
+                refreshUsers();
+            }
+        }
+
+        function quickAction(action, username) {
+            document.getElementById('banUsername').value = username;
+            
+            if (action === 'ban') {
+                document.getElementById('banReason').value = 'Нарушение правил';
+                adminBanUser();
+            } else if (action === 'mute') {
+                document.getElementById('banReason').value = 'Спам в чате';
+                adminMuteUser();
+            }
+        }
+
+        async function clearAllData() {
+            if (!confirm('⚠️ ВНИМАНИЕ!\n\nЭто удалит ВСЕХ пользователей и ВСЕ данные!\n\nПродолжить?')) return;
+            
+            const result = await adminApiCall('clear');
+            
+            if (result.error) {
+                alert('Ошибка: ' + result.error);
+            } else {
+                alert('Все данные очищены!');
+                localStorage.removeItem('been_russia_user');
+                location.reload();
+            }
+        }
+
+        // Делаем функции глобальными
         window.showPage = showPage;
+        window.toggleAdminPanel = toggleAdminPanel;
+        window.adminBanUser = adminBanUser;
+        window.adminUnbanUser = adminUnbanUser;
+        window.adminMuteUser = adminMuteUser;
+        window.adminUnmuteUser = adminUnmuteUser;
+        window.refreshUsers = refreshUsers;
+        window.clearAllData = clearAllData;
+        window.quickAction = quickAction;
     </script>
-<
+</body>
+</html>
