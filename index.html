@@ -1,52 +1,391 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Been Online</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Been Russia | Галактический Портал</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: black;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Arial Black', sans-serif;
-        }
-        
-        .message {
-            text-align: center;
-            padding: 40px;
-            border: 5px solid #ff5500;
-            border-radius: 20px;
-            background: rgba(255, 85, 0, 0.1);
-            box-shadow: 0 0 50px rgba(255, 85, 0, 0.5);
-        }
-        
-        h1 {
-            font-size: 4rem;
-            color: #ff5500;
-            text-shadow: 0 0 20px #ff5500;
-            margin-bottom: 20px;
-        }
-        
-        .subtitle {
-            font-size: 2rem;
-            color: #ffaa00;
-            text-shadow: 0 0 10px #ffaa00;
-        }
+        /* Стили остаются те же, что в предыдущем коде */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a1a; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; position: relative; }
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(ellipse at 20% 20%, rgba(0, 40, 90, 0.3) 0%, transparent 40%), radial-gradient(ellipse at 80% 80%, rgba(90, 0, 45, 0.3) 0%, transparent 40%), radial-gradient(ellipse at 40% 60%, rgba(0, 90, 70, 0.2) 0%, transparent 40%); z-index: -2; }
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid rgba(0, 200, 255, 0.3); margin-bottom: 40px; }
+        .logo { display: flex; align-items: center; gap: 15px; }
+        .logo-icon { width: 50px; height: 50px; background: linear-gradient(135deg, #00a8ff, #9c88ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; }
+        .logo-text { font-size: 32px; font-weight: bold; background: linear-gradient(90deg, #00a8ff, #9c88ff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 20px rgba(0, 168, 255, 0.5); }
+        .logo-subtext { font-size: 14px; color: #888; margin-top: -5px; }
+        .nav-auth { display: flex; align-items: center; gap: 20px; }
+        .user-info { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: rgba(0, 40, 80, 0.3); border-radius: 25px; border: 1px solid rgba(0, 200, 255, 0.2); }
+        .user-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #9c88ff, #00a8ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+        .username { font-weight: bold; color: #00a8ff; }
+        .nav-menu { display: flex; gap: 15px; margin-bottom: 20px; }
+        .nav-btn { padding: 10px 20px; background: rgba(0, 40, 80, 0.3); border: 1px solid rgba(0, 200, 255, 0.2); color: #00a8ff; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-weight: bold; }
+        .nav-btn:hover { background: rgba(0, 100, 200, 0.3); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 168, 255, 0.3); }
+        .logout-btn { background: rgba(200, 0, 0, 0.2); border-color: rgba(255, 50, 50, 0.3); color: #ff5555; }
+        .logout-btn:hover { background: rgba(200, 0, 0, 0.3); box-shadow: 0 5px 15px rgba(255, 50, 50, 0.3); }
+        .main-content { display: none; animation: fadeIn 0.5s; }
+        .auth-forms { animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .auth-container { max-width: 400px; margin: 50px auto; padding: 40px; background: rgba(10, 25, 47, 0.8); border-radius: 20px; border: 1px solid rgba(0, 200, 255, 0.3); box-shadow: 0 0 40px rgba(0, 168, 255, 0.2); backdrop-filter: blur(10px); }
+        .form-title { text-align: center; font-size: 28px; margin-bottom: 30px; color: #00a8ff; text-shadow: 0 0 10px rgba(0, 168, 255, 0.5); }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; color: #9c88ff; font-weight: bold; }
+        .form-input { width: 100%; padding: 15px; background: rgba(0, 20, 40, 0.5); border: 1px solid rgba(0, 200, 255, 0.2); border-radius: 10px; color: white; font-size: 16px; transition: all 0.3s; }
+        .form-input:focus { outline: none; border-color: #00a8ff; box-shadow: 0 0 15px rgba(0, 168, 255, 0.5); }
+        .form-btn { width: 100%; padding: 15px; background: linear-gradient(90deg, #00a8ff, #9c88ff); border: none; border-radius: 10px; color: white; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .form-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 168, 255, 0.4); }
+        .form-switch { text-align: center; margin-top: 20px; color: #888; }
+        .switch-btn { background: none; border: none; color: #00a8ff; cursor: pointer; text-decoration: underline; font-size: 16px; }
+        .error-message { color: #ff5555; text-align: center; margin-top: 15px; padding: 10px; background: rgba(255, 0, 0, 0.1); border-radius: 5px; border: 1px solid rgba(255, 0, 0, 0.3); }
+        .page { display: none; padding: 40px; background: rgba(10, 25, 47, 0.8); border-radius: 20px; border: 1px solid rgba(0, 200, 255, 0.3); margin-top: 30px; min-height: 400px; }
+        .page.active { display: block; animation: fadeIn 0.5s; }
+        .page-title { font-size: 36px; color: #00a8ff; margin-bottom: 30px; text-align: center; text-shadow: 0 0 15px rgba(0, 168, 255, 0.5); }
+        .page-content { font-size: 18px; line-height: 1.6; color: #ccc; text-align: center; padding: 40px; }
+        .construction { font-size: 24px; color: #9c88ff; margin-top: 20px; }
+        .history-list { max-height: 300px; overflow-y: auto; padding: 20px; background: rgba(0, 20, 40, 0.5); border-radius: 10px; border: 1px solid rgba(0, 200, 255, 0.2); }
+        .history-item { padding: 15px; margin-bottom: 10px; background: rgba(0, 40, 80, 0.3); border-radius: 8px; border-left: 4px solid #00a8ff; }
+        .history-time { color: #9c88ff; font-size: 14px; margin-bottom: 5px; }
+        .history-text { color: #fff; }
+        footer { margin-top: 60px; padding: 30px 0; text-align: center; border-top: 1px solid rgba(0, 200, 255, 0.3); color: #888; font-size: 14px; }
+        @media (max-width: 768px) { header { flex-direction: column; gap: 20px; } .nav-auth { width: 100%; justify-content: center; } .auth-container { margin: 20px; padding: 30px; } .page { padding: 20px; } }
     </style>
 </head>
 <body>
-    <div class="message">
-        <h1>В РАЗРАБОТКЕ</h1>
-        <div class="subtitle">by Nikita</div>
+    <div class="stars" id="stars"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">BR</div>
+                <div>
+                    <div class="logo-text">Been Russia</div>
+                    <div class="logo-subtext">Галактический Портал</div>
+                </div>
+            </div>
+            <div class="nav-auth" id="navAuth"></div>
+        </header>
+
+        <div class="auth-forms" id="authForms">
+            <div class="auth-container" id="loginForm">
+                <div class="form-title">Вход в Портал</div>
+                <div class="form-group">
+                    <label class="form-label">Имя пользователя</label>
+                    <input type="text" class="form-input" id="loginUsername" placeholder="Введите ваш никнейм">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="Введите пароль">
+                </div>
+                <button class="form-btn" id="loginBtn">Войти в систему</button>
+                <div class="form-switch">
+                    Нет аккаунта? <button class="switch-btn" id="showRegisterBtn">Зарегистрироваться</button>
+                </div>
+                <div class="error-message" id="loginError"></div>
+            </div>
+
+            <div class="auth-container" id="registerForm" style="display: none;">
+                <div class="form-title">Регистрация</div>
+                <div class="form-group">
+                    <label class="form-label">Имя пользователя</label>
+                    <input type="text" class="form-input" id="regUsername" placeholder="Придумайте никнейм">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="regPassword" placeholder="Придумайте пароль">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Повторите пароль</label>
+                    <input type="password" class="form-input" id="regPasswordConfirm" placeholder="Повторите пароль">
+                </div>
+                <button class="form-btn" id="registerBtn">Создать аккаунт</button>
+                <div class="form-switch">
+                    Уже есть аккаунт? <button class="switch-btn" id="showLoginBtn">Войти</button>
+                </div>
+                <div class="error-message" id="registerError"></div>
+            </div>
+        </div>
+
+        <div class="main-content" id="mainContent">
+            <div class="nav-menu" id="navMenu"></div>
+            <div class="page active" id="pageHome">
+                <div class="page-title">Главная</div>
+                <div class="page-content">
+                    Добро пожаловать в <strong>Been Russia</strong> — галактический портал для избранных.<br><br>
+                    <div class="construction">🚧 Раздел в разработке 🚧</div>
+                </div>
+            </div>
+            <div class="page" id="pageHistory">
+                <div class="page-title">История активности</div>
+                <div class="page-content">
+                    <div class="history-list" id="historyList"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Been Russia Galactic Portal © 2025</p>
+            <p>Доступ предоставляется только авторизованным пользователям</p>
+        </footer>
     </div>
-</body>
-</html>
+
+    <script>
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            createStars();
+            initEventListeners();
+            checkAuth();
+        });
+
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.width = Math.random() * 3 + 'px';
+                star.style.height = star.style.width;
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 5 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        function initEventListeners() {
+            document.getElementById('loginBtn').addEventListener('click', login);
+            document.getElementById('registerBtn').addEventListener('click', register);
+            document.getElementById('showRegisterBtn').addEventListener('click', showRegister);
+            document.getElementById('showLoginBtn').addEventListener('click', showLogin);
+        }
+
+        // ========== АВТОРИЗАЦИЯ ==========
+        function checkAuth() {
+            const user = localStorage.getItem('been_russia_user');
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    showAuthenticatedUI(userData);
+                } catch (e) {
+                    localStorage.removeItem('been_russia_user');
+                    showAuthForms();
+                }
+            } else {
+                showAuthForms();
+            }
+        }
+
+        function showAuthForms() {
+            document.getElementById('authForms').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('navAuth').innerHTML = '';
+        }
+
+        function showAuthenticatedUI(userData) {
+            document.getElementById('authForms').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            
+            // Обновляем шапку
+            const firstLetter = userData.username.charAt(0).toUpperCase();
+            document.getElementById('navAuth').innerHTML = `
+                <div class="user-info">
+                    <div class="user-avatar">${firstLetter}</div>
+                    <div class="username">${userData.username}</div>
+                </div>
+                <button class="nav-btn logout-btn" id="logoutBtn">Выйти</button>
+            `;
+            
+            // Добавляем обработчик выхода
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Обновляем меню
+            document.getElementById('navMenu').innerHTML = `
+                <button class="nav-btn" onclick="showPage('pageHome')">Главная</button>
+                <button class="nav-btn" onclick="showPage('pageHistory')">История</button>
+            `;
+            
+            loadHistory();
+        }
+
+        // ========== ФОРМЫ ==========
+        function showLogin() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            clearErrors();
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            clearErrors();
+        }
+
+        function clearErrors() {
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('registerError').textContent = '';
+        }
+
+        // ========== РЕГИСТРАЦИЯ ==========
+        function register() {
+            const username = document.getElementById('regUsername').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+            const errorElement = document.getElementById('registerError');
+
+            // Валидация
+            if (!username || !password || !passwordConfirm) {
+                errorElement.textContent = 'Заполните все поля';
+                return;
+            }
+
+            if (username.length < 3) {
+                errorElement.textContent = 'Имя пользователя должно быть не менее 3 символов';
+                return;
+            }
+
+            if (password.length < 6) {
+                errorElement.textContent = 'Пароль должен быть не менее 6 символов';
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                errorElement.textContent = 'Пароли не совпадают';
+                return;
+            }
+
+            // Проверка существующего пользователя
+            const existingUser = localStorage.getItem(`been_russia_user_${username}`);
+            if (existingUser) {
+                errorElement.textContent = 'Пользователь с таким именем уже существует';
+                return;
+            }
+
+            // Создание пользователя
+            const userData = {
+                username: username,
+                password: password,
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+            };
+
+            // Сохранение
+            localStorage.setItem(`been_russia_user_${username}`, JSON.stringify(userData));
+            localStorage.setItem('been_russia_user', JSON.stringify(userData));
+
+            // Добавляем запись в историю
+            addHistory('Регистрация в системе', username);
+
+            // Показываем интерфейс
+            showAuthenticatedUI(userData);
+        }
+
+        // ========== ВХОД ==========
+        function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorElement = document.getElementById('loginError');
+
+            if (!username || !password) {
+                errorElement.textContent = 'Заполните все поля';
+                return;
+            }
+
+            // Проверка пользователя
+            const userDataStr = localStorage.getItem(`been_russia_user_${username}`);
+            if (!userDataStr) {
+                errorElement.textContent = 'Пользователь не найден';
+                return;
+            }
+
+            const userData = JSON.parse(userDataStr);
+
+            // Проверка пароля
+            if (userData.password !== password) {
+                errorElement.textContent = 'Неверный пароль';
+                return;
+            }
+
+            // Обновляем время последнего входа
+            userData.lastLogin = new Date().toISOString();
+            localStorage.setItem(`been_russia_user_${username}`, JSON.stringify(userData));
+            localStorage.setItem('been_russia_user', JSON.stringify(userData));
+
+            // Добавляем запись в историю
+            addHistory('Вход в систему', username);
+
+            // Показываем интерфейс
+            showAuthenticatedUI(userData);
+        }
+
+        // ========== ВЫХОД ==========
+        function logout() {
+            const currentUser = JSON.parse(localStorage.getItem('been_russia_user'));
+            if (currentUser) {
+                addHistory('Выход из системы', currentUser.username);
+            }
+
+            localStorage.removeItem('been_russia_user');
+            
+            // Очищаем формы
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regPasswordConfirm').value = '';
+            
+            showAuthForms();
+        }
+
+        // ========== СТРАНИЦЫ ==========
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+
+            if (pageId === 'pageHistory') {
+                loadHistory();
+            }
+        }
+
+        // ========== ИСТОРИЯ ==========
+        function addHistory(action, username) {
+            const history = JSON.parse(localStorage.getItem(`been_russia_history_${username}`)) || [];
+            
+            const historyItem = {
+                action: action,
+                timestamp: new Date().toLocaleString('ru-RU'),
+                date: new Date().toISOString()
+            };
+
+            history.unshift(historyItem);
+            if (history.length > 50) history.pop();
+
+            localStorage.setItem(`been_russia_history_${username}`, JSON.stringify(history));
+        }
+
+        function loadHistory() {
+            const currentUser = JSON.parse(localStorage.getItem('been_russia_user'));
+            if (!currentUser) return;
+
+            const history = JSON.parse(localStorage.getItem(`been_russia_history_${currentUser.username}`)) || [];
+            const historyList = document.getElementById('historyList');
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="history-item"><div class="history-text">История активности пуста</div></div>';
+                return;
+            }
+
+            historyList.innerHTML = history.map(item => `
+                <div class="history-item">
+                    <div class="history-time">${item.timestamp}</div>
+                    <div class="history-text">${item.action}</div>
+                </div>
+            `).join('');
+        }
+
+        // Делаем функции глобальными для обработчиков onclick
+        window.showPage = showPage;
+    </script>
+<
