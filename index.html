@@ -11,6 +11,92 @@
         .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
         .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s infinite; }
         @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        /* Стили для забаненного аккаунта */
+        .ban-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a0a0a, #0a0a1a);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .ban-screen.active {
+            display: flex;
+            animation: fadeIn 0.5s;
+        }
+
+        .ban-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            color: #ff5555;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .ban-title {
+            font-size: 48px;
+            color: #ff5555;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 85, 85, 0.5);
+        }
+
+        .ban-reason {
+            font-size: 24px;
+            color: #ff8888;
+            margin-bottom: 10px;
+            max-width: 600px;
+            line-height: 1.4;
+        }
+
+        .ban-details {
+            font-size: 16px;
+            color: #aaa;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 0, 0, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 85, 85, 0.3);
+            max-width: 500px;
+        }
+
+        .ban-date {
+            font-size: 14px;
+            color: #888;
+            margin-top: 20px;
+        }
+
+        .ban-logout-btn {
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: rgba(255, 85, 85, 0.2);
+            border: 2px solid #ff5555;
+            color: #ff5555;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .ban-logout-btn:hover {
+            background: rgba(255, 85, 85, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 85, 85, 0.4);
+        }
+        
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid rgba(0, 200, 255, 0.3); margin-bottom: 40px; }
         .logo { display: flex; align-items: center; gap: 15px; }
@@ -70,6 +156,19 @@
     </style>
 </head>
 <body>
+    <!-- Экран бана (скрыт по умолчанию) -->
+    <div class="ban-screen" id="banScreen">
+        <div class="ban-icon">🚫</div>
+        <div class="ban-title">АККАУНТ ЗАБЛОКИРОВАН</div>
+        <div class="ban-reason" id="banReasonText">Нарушение правил сообщества</div>
+        <div class="ban-details">
+            Ваш аккаунт был заблокирован администратором.<br>
+            Вы не можете выйти из системы, пока бан активен.
+        </div>
+        <div class="ban-date" id="banDateText">Дата блокировки: --.--.---- --:--</div>
+        <button class="ban-logout-btn" id="forceLogoutBtn" style="display:none;">Выйти (только для теста)</button>
+    </div>
+
     <div class="stars" id="stars"></div>
     <div class="container">
         <header>
@@ -183,12 +282,15 @@
         const API_URL = 'https://been-site-ochre.vercel.app/api';
         let currentUser = null;
         let isAdmin = false;
+        let isBanned = false;
+        let banData = null;
 
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         document.addEventListener('DOMContentLoaded', function() {
             createStars();
             initEventListeners();
             checkAuth();
+            checkBanStatus(); // Проверяем бан при загрузке
         });
 
         function createStars() {
@@ -210,9 +312,97 @@
             document.getElementById('registerBtn').addEventListener('click', register);
             document.getElementById('showRegisterBtn').addEventListener('click', showRegister);
             document.getElementById('showLoginBtn').addEventListener('click', showLogin);
+            document.getElementById('forceLogoutBtn').addEventListener('click', forceLogout);
         }
 
-        // ========== API ФУНКЦИИ (ИСПРАВЛЕННЫЕ) ==========
+        // ========== ПРОВЕРКА БАНА ==========
+        function checkBanStatus() {
+            const banInfo = localStorage.getItem('user_ban_info');
+            if (banInfo) {
+                try {
+                    banData = JSON.parse(banInfo);
+                    if (banData.isBanned && banData.username === currentUser?.username) {
+                        showBanScreen(banData.reason, banData.banDate);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('user_ban_info');
+                }
+            }
+        }
+
+        function showBanScreen(reason, banDate) {
+            isBanned = true;
+            
+            // Скрываем все остальное
+            document.getElementById('authForms').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('navAuth').innerHTML = '';
+            
+            // Показываем экран бана
+            document.getElementById('banScreen').classList.add('active');
+            document.getElementById('banReasonText').textContent = reason || 'Нарушение правил сообщества';
+            
+            // Форматируем дату
+            if (banDate) {
+                const date = new Date(banDate);
+                document.getElementById('banDateText').textContent = 
+                    `Дата блокировки: ${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU')}`;
+            }
+            
+            // Блокируем выход
+            document.addEventListener('keydown', blockKeys);
+            document.addEventListener('contextmenu', blockRightClick);
+            
+            console.log(`🚫 Пользователь ${currentUser?.username} забанен. Причина: ${reason}`);
+        }
+
+        function hideBanScreen() {
+            isBanned = false;
+            document.getElementById('banDateText').textContent = 
+                    `Дата блокировки: ${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU')}`;
+            }
+            
+            // Блокируем выход
+            document.addEventListener('keydown', blockKeys);
+            document.addEventListener('contextmenu', blockRightClick);
+            
+            console.log(`🚫 Пользователь ${currentUser?.username} забанен. Причина: ${reason}`);
+        }
+
+        function hideBanScreen() {
+            isBanned = false;
+            document.getElementById('banScreen').classList.remove('active');
+            document.removeEventListener('keydown', blockKeys);
+            document.removeEventListener('contextmenu', blockRightClick);
+        }
+
+        function blockKeys(e) {
+            // Блокируем F12, Ctrl+Shift+I, Ctrl+U и т.д.
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.key === 'u') ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                alert('Действие заблокировано! Ваш аккаунт забанен.');
+            }
+        }
+
+        function blockRightClick(e) {
+            e.preventDefault();
+            alert('Правый клик заблокирован! Ваш аккаунт забанен.');
+        }
+
+        function forceLogout() {
+            // Принудительный выход (только для теста)
+            if (confirm('Вы уверены что хотите выйти? Это действие доступно только для тестирования.')) {
+                localStorage.removeItem('been_russia_user');
+                localStorage.removeItem('user_ban_info');
+                hideBanScreen();
+                showAuthForms();
+            }
+        }
+
+        // ========== API ФУНКЦИИ ==========
         async function apiCall(action, data = {}) {
             console.log(`📞 API Call: ${action}`, data);
             
@@ -229,11 +419,10 @@
                 console.log('Response status:', response.status, response.statusText);
                 
                 if (!response.ok) {
-                    // Если сервер вернул ошибку, пытаемся получить JSON
                     try {
                         const errorData = await response.json();
                         console.log('Error response:', errorData);
-                        return errorData; // Возвращаем ошибку от сервера
+                        return errorData;
                     } catch (e) {
                         throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
                     }
@@ -269,6 +458,7 @@
                     showAuthenticatedUI(userData);
                 } catch (e) {
                     localStorage.removeItem('been_russia_user');
+                    localStorage.removeItem('user_ban_info');
                     showAuthForms();
                 }
             } else {
@@ -277,16 +467,18 @@
         }
 
         function showAuthForms() {
+            hideBanScreen();
             document.getElementById('authForms').style.display = 'block';
             document.getElementById('mainContent').style.display = 'none';
             document.getElementById('navAuth').innerHTML = '';
         }
 
         function showAuthenticatedUI(userData) {
+            if (isBanned) return; // Не показываем если забанен
+            
             document.getElementById('authForms').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
-            // Обновляем шапку
             const firstLetter = userData.username.charAt(0).toUpperCase();
             let adminBadge = '';
             if (userData.isAdmin) {
@@ -313,6 +505,7 @@
             
             if (userData.isAdmin) {
                 document.getElementById('adminToggleBtn').style.display = 'block';
+                document.getElementById('forceLogoutBtn').style.display = 'block'; // Для админа показываем кнопку выхода
             }
             
             loadHistory();
@@ -336,7 +529,7 @@
             document.getElementById('registerError').textContent = '';
         }
 
-         // ========== РЕГИСТРАЦИЯ ==========
+        // ========== РЕГИСТРАЦИЯ ==========
         async function register() {
             const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value;
@@ -398,10 +591,31 @@
 
             const result = await apiCall('login', { username, password });
             
+            // Проверяем бан
+            if (result.error && result.error === 'Аккаунт забанен') {
+                // Сохраняем информацию о бане
+                const banInfo = {
+                    username: username,
+                    isBanned: true,
+                    reason: result.reason || 'Нарушение правил',
+                    banDate: result.banDate || new Date().toISOString()
+                };
+                localStorage.setItem('user_ban_info', JSON.stringify(banInfo));
+                
+                // Показываем экран бана
+                showBanScreen(result.reason, result.banDate);
+                errorElement.textContent = 'Аккаунт забанен';
+                return;
+            }
+            
             if (result.error) {
                 errorElement.textContent = result.message || result.error;
                 return;
             }
+
+            // Очищаем информацию о бане если вход успешен
+            localStorage.removeItem('user_ban_info');
+            hideBanScreen();
 
             const userData = {
                 username: username,
@@ -420,13 +634,21 @@
 
         // ========== ВЫХОД ==========
         function logout() {
+            if (isBanned) {
+                alert('Вы не можете выйти! Ваш аккаунт забанен.');
+                return;
+            }
+
             if (currentUser) {
                 addHistory('Выход из системы', currentUser.username);
             }
 
             localStorage.removeItem('been_russia_user');
+            localStorage.removeItem('user_ban_info');
             currentUser = null;
             isAdmin = false;
+            isBanned = false;
+            hideBanScreen();
             
             document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
@@ -439,6 +661,8 @@
 
         // ========== СТРАНИЦЫ ==========
         function showPage(pageId) {
+            if (isBanned) return;
+            
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
             });
@@ -451,6 +675,8 @@
 
         // ========== ИСТОРИЯ ==========
         function addHistory(action, username) {
+            if (isBanned) return;
+            
             const history = JSON.parse(localStorage.getItem(`been_russia_history_${username}`)) || [];
             
             const historyItem = {
@@ -466,7 +692,7 @@
         }
 
         function loadHistory() {
-            if (!currentUser) return;
+            if (!currentUser || isBanned) return;
 
             const history = JSON.parse(localStorage.getItem(`been_russia_history_${currentUser.username}`)) || [];
             const historyList = document.getElementById('historyList');
@@ -486,6 +712,8 @@
 
         // ========== АДМИН ФУНКЦИИ ==========
         function toggleAdminPanel() {
+            if (isBanned) return;
+            
             const panel = document.getElementById('adminPanel');
             panel.classList.toggle('active');
             
@@ -495,7 +723,7 @@
         }
 
         async function refreshUsers() {
-            if (!isAdmin) return;
+            if (!isAdmin || isBanned) return;
             
             const result = await adminApiCall('users');
             if (result.error) {
@@ -534,6 +762,8 @@
         }
 
         async function adminBanUser() {
+            if (isBanned) return;
+            
             const username = document.getElementById('banUsername').value.trim();
             const reason = document.getElementById('banReason').value.trim() || 'Без причины';
             
@@ -560,6 +790,8 @@
         }
 
         async function adminUnbanUser() {
+            if (isBanned) return;
+            
             const username = document.getElementById('banUsername').value.trim();
             if (!username) {
                 alert('Введите имя пользователя');
@@ -576,47 +808,9 @@
             }
         }
 
-        async function adminMuteUser() {
-            const username = document.getElementById('banUsername').value.trim();
-            const reason = document.getElementById('banReason').value.trim() || 'Без причины';
-            
-            if (!username) {
-                alert('Введите имя пользователя');
-                return;
-            }
-
-            const result = await adminApiCall('mute', { 
-                targetUser: username, 
-                reason: reason,
-                duration: 60
-            });
-            
-            if (result.error) {
-                alert('Ошибка: ' + result.error);
-            } else {
-                alert(`Пользователь ${username} замьючен на 60 минут`);
-                refreshUsers();
-            }
-        }
-
-        async function adminUnmuteUser() {
-            const username = document.getElementById('banUsername').value.trim();
-            if (!username) {
-                alert('Введите имя пользователя');
-                return;
-            }
-
-            const result = await adminApiCall('unmute', { targetUser: username });
-            
-            if (result.error) {
-                alert('Ошибка: ' + result.error);
-            } else {
-                alert(`Пользователь ${username} размьючен`);
-                refreshUsers();
-            }
-        }
-
         function quickAction(action, username) {
+            if (isBanned) return;
+            
             document.getElementById('banUsername').value = username;
             
             if (action === 'ban') {
